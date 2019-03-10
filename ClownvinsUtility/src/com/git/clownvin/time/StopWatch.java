@@ -7,7 +7,7 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * A {@code StopWatch} implementation that supports pausing. Useful for
- * monitoring the runtime of certain blocks of code. Also supplies a global
+ * monitoring the run time of certain blocks of code. Also supplies a global
  * {@code StopWatch} instance, for use in code that does not require multiple
  * {@code StopWatche}s.
  * <p>
