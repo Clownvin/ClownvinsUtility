@@ -5,10 +5,10 @@
  * @author Clownvin
  *
  */
-module com.git.clownvin.util {
-	exports com.git.clownvin.lang;
-	exports com.git.clownvin.util;
-	exports com.git.clownvin.security;
-	exports com.git.clownvin.math;
-	exports com.git.clownvin.time;
+module com.clownvin.util {
+	exports com.clownvin.lang;
+	exports com.clownvin.util;
+	exports com.clownvin.security;
+	exports com.clownvin.math;
+	exports com.clownvin.time;
 }

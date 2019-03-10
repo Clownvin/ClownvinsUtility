@@ -1,4 +1,4 @@
-package com.git.clownvin.util;
+package com.clownvin.util;
 
 import java.util.Collection;
 import java.util.ConcurrentModificationException;

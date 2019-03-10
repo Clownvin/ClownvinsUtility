@@ -1,4 +1,4 @@
-package com.git.clownvin.math;
+package com.clownvin.math;
 
 public class MathUtil {
 	

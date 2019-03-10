@@ -1,4 +1,4 @@
-package com.git.clownvin.security;
+package com.clownvin.security;
 
 import java.security.SecureRandom;
 import java.util.Arrays;

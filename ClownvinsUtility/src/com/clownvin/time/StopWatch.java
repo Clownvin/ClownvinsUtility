@@ -1,4 +1,4 @@
-package com.git.clownvin.time;
+package com.clownvin.time;
 
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.NANOSECONDS;
