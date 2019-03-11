@@ -14,39 +14,39 @@ import java.util.ListIterator;
  * @param <T>
  */
 public class CircularList<T> implements Deque<T>, List<T> {
-   
+
    /**
     *
     */
    public static final float DEFAULT_RESIZE_PERCENT = 1.2F;
-
+   
    /**
     *
     */
    public static final int MIN_CAPACITY = 10;
-   
+
    // How much to automatically resize by
    protected float resizeModifier;
-
+   
    // Incremented for each operation that changes the array
    protected volatile long mods = 0L;
-
+   
    protected volatile int head = 0;
    protected volatile int tail = 1;
    protected volatile int size = 0;
-   
+
    // The underlying array
    protected T[] array;
-   
-   
+
+
    /**
     *
     */
    public CircularList() {
       this(CircularList.MIN_CAPACITY);
    }
-   
-   
+
+
    /**
     *
     * @param resizeModifier
@@ -54,8 +54,8 @@ public class CircularList<T> implements Deque<T>, List<T> {
    public CircularList(final float resizeModifier) {
       this(CircularList.MIN_CAPACITY, resizeModifier);
    }
-   
-   
+
+
    /**
     *
     * @param initialCapacity
@@ -63,8 +63,8 @@ public class CircularList<T> implements Deque<T>, List<T> {
    public CircularList(final int initialCapacity) {
       this(initialCapacity, CircularList.DEFAULT_RESIZE_PERCENT);
    }
-   
-   
+
+
    /**
     *
     * @param initialCapacity
@@ -75,8 +75,8 @@ public class CircularList<T> implements Deque<T>, List<T> {
       array = (T[]) new Object[Math.max(initialCapacity, CircularList.MIN_CAPACITY)];
       this.resizeModifier = Math.max(resizeModifier, CircularList.DEFAULT_RESIZE_PERCENT);
    }
-   
-   
+
+
    // TODO TODO TODO Revise
    /**
     *
@@ -85,7 +85,7 @@ public class CircularList<T> implements Deque<T>, List<T> {
     */
    @Override
    public void add(final int index, final T entry) {
-      if (index == size - 1) {                     // Add to tail shortcut
+      if (index == (size - 1)) {                     // Add to tail shortcut
          add(entry);
          return;
       }
@@ -121,7 +121,7 @@ public class CircularList<T> implements Deque<T>, List<T> {
       size++;
       tail = (tail + 1) % array.length;
    }
-   
+
    /**
     *
     * @param entry
@@ -136,8 +136,8 @@ public class CircularList<T> implements Deque<T>, List<T> {
       size++;
       return true;
    }
-   
-   
+
+
    /**
     *
     * @param entries
@@ -152,10 +152,10 @@ public class CircularList<T> implements Deque<T>, List<T> {
       final int count = entryArray.length;
       //final int oldTail = tail;
       //
-      if (tail + count <= array.length || isWrapping()) {
+      if (((tail + count) <= array.length) || isWrapping()) {
          System.arraycopy(entryArray, 0, array, tail, count);
       } else {
-         int len = array.length - tail;
+         final int len = array.length - tail;
          System.arraycopy(entryArray, 0, array, tail, len);
          System.arraycopy(entryArray, len, array, 0, count - len);
       }
@@ -163,7 +163,7 @@ public class CircularList<T> implements Deque<T>, List<T> {
       size += count;
       return true;
    }
-   
+
    @Override
    public boolean addAll(final int index, final Collection<? extends T> entries) {
       if (index == 0) {
@@ -178,7 +178,7 @@ public class CircularList<T> implements Deque<T>, List<T> {
       }
       return true;
    }
-   
+
    /**
     *
     * @param entries
@@ -201,7 +201,7 @@ public class CircularList<T> implements Deque<T>, List<T> {
       size += count;
       return true;
    }
-   
+
    /**
     *
     * @param entry
@@ -210,7 +210,7 @@ public class CircularList<T> implements Deque<T>, List<T> {
    public void addFirst(final T entry) {
       addToFront(entry);
    }
-   
+
    /**
     *
     * @param entry
@@ -219,7 +219,7 @@ public class CircularList<T> implements Deque<T>, List<T> {
    public void addLast(final T entry) {
       add(entry);
    }
-   
+
    /**
     *
     * @param entry
@@ -232,7 +232,7 @@ public class CircularList<T> implements Deque<T>, List<T> {
       size++;
       return true;
    }
-   
+
    /**
     *
     * @param collection
@@ -258,7 +258,7 @@ public class CircularList<T> implements Deque<T>, List<T> {
       mods += offset;
       return offset != 0;
    }
-   
+
    /**
     *
     * @param startModifications
@@ -268,7 +268,7 @@ public class CircularList<T> implements Deque<T>, List<T> {
          throw new ConcurrentModificationException("CycleQueue was modified by a thread while being accessed.");
       }
    }
-
+   
    /**
     *
     */
@@ -280,7 +280,7 @@ public class CircularList<T> implements Deque<T>, List<T> {
       tail = 1;
       mods++;
    }
-   
+
    /**
     *
     * @param entry
@@ -295,7 +295,7 @@ public class CircularList<T> implements Deque<T>, List<T> {
       }
       return false;
    }
-   
+
    /**
     *
     * @param entries
@@ -310,7 +310,7 @@ public class CircularList<T> implements Deque<T>, List<T> {
       }
       return true;
    }
-   
+
    /**
     *
     * @param index
@@ -319,8 +319,8 @@ public class CircularList<T> implements Deque<T>, List<T> {
    protected int corner(final int index) {
       return index < 0 ? index + array.length : index % array.length;
    }
-   
-   
+
+
    /**
     *
     * @return
@@ -328,26 +328,26 @@ public class CircularList<T> implements Deque<T>, List<T> {
    @Override
    public Iterator<T> descendingIterator() {
       return new Iterator<>() {
-         
+
          int        currIndex = size - 1;
          final long startMod  = mods;
-         
+
          @Override
          public boolean hasNext() {
             checkForConcurrentModification(startMod);
             return currIndex > 0;
          }
-         
+
          @Override
          public T next() {
             checkForConcurrentModification(startMod);
             return get(currIndex--);
          }
-         
+
       };
    }
-   
-   
+
+
    /**
     *
     * @return
@@ -359,7 +359,7 @@ public class CircularList<T> implements Deque<T>, List<T> {
       }
       return get(0);
    }
-   
+
    /**
     *
     * @param capacity
@@ -370,7 +370,7 @@ public class CircularList<T> implements Deque<T>, List<T> {
       }
       resize((int) (capacity * resizeModifier));
    }
-   
+
    /**
     *
     * @return
@@ -378,7 +378,7 @@ public class CircularList<T> implements Deque<T>, List<T> {
    public boolean full() {
       return size == array.length;
    }
-   
+
    /**
     *
     * @param index
@@ -388,7 +388,7 @@ public class CircularList<T> implements Deque<T>, List<T> {
    public T get(final int index) {
       return array[translate(index)];
    }
-   
+
    /**
     *
     * @return
@@ -397,7 +397,7 @@ public class CircularList<T> implements Deque<T>, List<T> {
    public T getFirst() {
       return get(0);
    }
-   
+
    /**
     *
     * @return
@@ -406,7 +406,11 @@ public class CircularList<T> implements Deque<T>, List<T> {
    public T getLast() {
       return get(size - 1);
    }
-   
+
+   protected int getTail() {
+      return tail;
+   }
+
    /**
     *
     * @param entry
@@ -429,7 +433,7 @@ public class CircularList<T> implements Deque<T>, List<T> {
       }
       return -1;
    }
-   
+
    /**
     *
     * @return
@@ -438,11 +442,11 @@ public class CircularList<T> implements Deque<T>, List<T> {
    public boolean isEmpty() {
       return size == 0;
    }
-   
+
    protected boolean isWrapping() {
-      return ((head >= tail) && (tail != 0)) || (full() && head != 0);
+      return ((head >= tail) && (tail != 0)) || (full() && (head != 0));
    }
-   
+
    /**
     *
     * @return
@@ -450,26 +454,26 @@ public class CircularList<T> implements Deque<T>, List<T> {
    @Override
    public Iterator<T> iterator() {
       return new Iterator<>() {
-         
+
          int currIndex = 0;
-         
+
          final long startMod = mods;
-         
+
          @Override
          public boolean hasNext() {
             checkForConcurrentModification(startMod);
             return currIndex != size;
          }
-         
+
          @Override
          public T next() {
             checkForConcurrentModification(startMod);
             return get(currIndex++);
          }
-         
+
       };
    }
-   
+
    /**
     *
     * @param object
@@ -492,7 +496,7 @@ public class CircularList<T> implements Deque<T>, List<T> {
       }
       return -1;
    }
-   
+
    /**
     *
     * @return
@@ -510,54 +514,54 @@ public class CircularList<T> implements Deque<T>, List<T> {
    @Override
    public ListIterator<T> listIterator(final int start) {
       return new ListIterator<>() {
-         
+
          int index = start - 1;
-         
+
          @Override
          public void add(final T entry) {
             CircularList.this.add(entry);
          }
-         
+
          @Override
          public boolean hasNext() {
             return index != size;
          }
-         
+
          @Override
          public boolean hasPrevious() {
             return index > 0;
          }
-         
+
          @Override
          public T next() {
             return get(++index);
          }
-         
+
          @Override
          public int nextIndex() {
             return index + 1;
          }
-         
+
          @Override
          public T previous() {
             return get(--index);
          }
-         
+
          @Override
          public int previousIndex() {
             return index - 1;
          }
-         
+
          @Override
          public void remove() {
             CircularList.this.remove(index);
          }
-         
+
          @Override
          public void set(final T entry) {
             CircularList.this.set(index, entry);
          }
-         
+
       };
    }
 
@@ -570,22 +574,22 @@ public class CircularList<T> implements Deque<T>, List<T> {
          throw new ArrayIndexOutOfBoundsException("Index must be cannot be less than 0");
       }
    }
-   
+
    @Override
    public boolean offer(final T e) {
       return add(e);
    }
-   
+
    @Override
    public boolean offerFirst(final T e) {
       return addToFront(e);
    }
-   
+
    @Override
    public boolean offerLast(final T e) {
       return add(e);
    }
-   
+
    @Override
    public T peek() {
       if (isEmpty()) {
@@ -593,7 +597,7 @@ public class CircularList<T> implements Deque<T>, List<T> {
       }
       return element();
    }
-   
+
    @Override
    public T peekFirst() {
       if (isEmpty()) {
@@ -601,7 +605,7 @@ public class CircularList<T> implements Deque<T>, List<T> {
       }
       return getFirst();
    }
-   
+
    @Override
    public T peekLast() {
       if (isEmpty()) {
@@ -609,7 +613,7 @@ public class CircularList<T> implements Deque<T>, List<T> {
       }
       return getLast();
    }
-   
+
    @Override
    public T poll() {
       if (isEmpty()) {
@@ -617,7 +621,7 @@ public class CircularList<T> implements Deque<T>, List<T> {
       }
       return remove();
    }
-   
+
    @Override
    public T pollFirst() {
       if (isEmpty()) {
@@ -625,7 +629,7 @@ public class CircularList<T> implements Deque<T>, List<T> {
       }
       return remove();
    }
-   
+
    @Override
    public T pollLast() {
       if (isEmpty()) {
@@ -633,17 +637,17 @@ public class CircularList<T> implements Deque<T>, List<T> {
       }
       return removeFromRear();
    }
-   
+
    @Override
    public T pop() {
       return removeFromRear();
    }
-   
+
    @Override
    public void push(final T e) {
       add(e);
    }
-   
+
    /**
     *
     * @param index
@@ -653,7 +657,7 @@ public class CircularList<T> implements Deque<T>, List<T> {
          throw new ArrayIndexOutOfBoundsException(index + " is not within the range: [0, " + size + ")");
       }
    }
-   
+
    @Override
    public T remove() {
       if (isEmpty()) {
@@ -666,7 +670,7 @@ public class CircularList<T> implements Deque<T>, List<T> {
       size--;
       return returnVal;
    }
-   
+
    @Override
    public T remove(final int index) {
       // Remove head shortcut
@@ -700,7 +704,7 @@ public class CircularList<T> implements Deque<T>, List<T> {
       mods++;
       return val;
    }
-   
+
    @Override
    public boolean remove(final Object o) {
       final int indexOf = indexOf(o);
@@ -710,22 +714,22 @@ public class CircularList<T> implements Deque<T>, List<T> {
       remove(indexOf);
       return true;
    }
-   
+
    @Override
    public boolean removeAll(final Collection<?> c) {
       return batchRemove(c, false);
    }
-   
+
    @Override
    public T removeFirst() {
       return remove();
    }
-   
+
    @Override
    public boolean removeFirstOccurrence(final Object o) {
       return remove(o);
    }
-   
+
    public T removeFromRear() {
       if (isEmpty()) {
          throw new IllegalStateException("CycleQueue is currently empty.");
@@ -758,6 +762,18 @@ public class CircularList<T> implements Deque<T>, List<T> {
       return true;
    }
    
+   //   protected int getHead() {
+   //      return head;
+   //   }
+   //   
+   //   protected int getCapacity() {
+   //      return array.length;
+   //   }
+   //   
+   //   protected int getHeadSize() {
+   //      return getCapacity() - getHead();
+   //   }
+
    @SuppressWarnings("unchecked")
    public void resize(final int newSize) {
       final T[] array = (T[]) new Object[Math.max(newSize, CircularList.MIN_CAPACITY)];
@@ -775,12 +791,12 @@ public class CircularList<T> implements Deque<T>, List<T> {
       tail = size;
       mods++;
    }
-   
+
    @Override
    public boolean retainAll(final Collection<?> c) {
       return batchRemove(c, true);
    }
-   
+
    @SuppressWarnings("unchecked")
    public void reverse() {
       for (int i = 0; i < (size / 2); i++) {
@@ -789,7 +805,7 @@ public class CircularList<T> implements Deque<T>, List<T> {
          set(size - (i + 1), (T) o);
       }
    }
-   
+
    @Override
    public T set(final int index, final T element) {
       lowerRangeCheck(index);
@@ -803,12 +819,12 @@ public class CircularList<T> implements Deque<T>, List<T> {
       mods++;
       return element;
    }
-   
+
    @Override
    public int size() {
       return size;
    }
-   
+
    @Override
    public List<T> subList(final int fromIndex, final int toIndex) {
       final List<T> sub = new CircularList<>(toIndex - fromIndex);
@@ -817,7 +833,7 @@ public class CircularList<T> implements Deque<T>, List<T> {
       }
       return sub;
    }
-   
+
    @Override
    public Object[] toArray() {
       final Object[] object = new Object[size];
@@ -826,7 +842,7 @@ public class CircularList<T> implements Deque<T>, List<T> {
       }
       return object;
    }
-   
+
    @Override
    @SuppressWarnings({
          "hiding", "unchecked" // Safe to assume that array will ONLY contain types implementing T
@@ -838,12 +854,12 @@ public class CircularList<T> implements Deque<T>, List<T> {
       }
       return array;
    }
-   
+
    @Override
    public String toString() {
       return "{ CircularList: { size: " + size + ", head: " + head + ", tail: " + tail + ", capacity: " + array.length + ", mods: " + mods + "}}";
    }
-   
+
    protected int translate(final int index) {
       return (head + index) % array.length;
    }

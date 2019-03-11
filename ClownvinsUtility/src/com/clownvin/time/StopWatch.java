@@ -19,7 +19,7 @@ import java.util.concurrent.TimeUnit;
  * execute code unrelated to what {@code StopWatch} is to be monitoring.
  *
  * @author Clownvin
- * @version 1.0
+ * @version 1.1
  *
  */
 public class StopWatch {
@@ -31,6 +31,8 @@ public class StopWatch {
     * @since 1.0
     */
    public static final StopWatch GLOBAL_STOPWATCH = new StopWatch();
+   
+   protected static volatile long alarmCounter = 0;
 
    /**
     * The value of {@code System.nanoTime()} from when {@link #start} was last
@@ -67,18 +69,6 @@ public class StopWatch {
    protected volatile long timerLength = 0;
    
    /**
-    * Whether or not this StopWatch is stopped.
-    *
-    * @see #start()
-    * @see #start(long)
-    * @see #restart()
-    * @see #restart(long)
-    * @see #restartPaused()
-    * @see #restartPaused(long)
-    * @since 1.0
-    */
-   protected volatile boolean stopped = true;
-   /**
     * Whether or not this StopWatch is paused.
     *
     * @see #isPaused()
@@ -86,7 +76,7 @@ public class StopWatch {
     * @see #unpause()
     * @since 1.0
     */
-   protected volatile boolean paused  = false;
+   protected volatile boolean paused = false;
 
    /**
     * Exists to call {@link #notifyAll()} on this {@code StopWatch} whenever this
@@ -99,46 +89,42 @@ public class StopWatch {
    protected Thread alarm;
 
    /**
-    * The actual logic block for {@link #alarm}.
+    * The actual logic block for {@link #alarm}. Loops until expired
     *
     * @see #alarm
     * @since 1.0
     */
    protected final Runnable alarmRunnable = () -> {
-      while (true) { //TODO consider adding ternary condition
-         synchronized (alarm) {
-            while (stopped || expired()) {
-               try {
-                  alarm.wait(Math.max(timerLength - this.timeElapsed(), 0));
-               } catch (final InterruptedException e2) {
-                  throw new RuntimeException(e2);
-               }
-            }
+      while (!expired()) {
+         try {
+            Thread.sleep(timeLeft(MILLISECONDS));
+         } catch (final InterruptedException e1) {
+            break;
          }
-         while (!expired()) {
-            try {
-               Thread.sleep(1);
-            } catch (final InterruptedException e1) {
-               throw new RuntimeException(e1);
-            }
-         }
-         synchronized (StopWatch.this) {
-            StopWatch.this.notifyAll();
-         }
+      }
+      synchronized (StopWatch.this) {
+         StopWatch.this.notifyAll();
       }
    };
 
-   /**
-    * Creates a new {@code StopWatch} instance, creating a new {@link #alarm} at
-    * the same time.
-    *
-    * @see #alarm
-    * @since 1.0
-    */
    public StopWatch() {
-      alarm = new Thread(alarmRunnable);
-      alarm.setName("StopWatch@" + hashCode() + ".alarm");
-      alarm.start();
+      this(false, 0);
+   }
+
+   public StopWatch(final boolean paused) {
+      this(paused, 0);
+   }
+
+   public StopWatch(final boolean paused, final long timerLength) {
+      if (paused) {
+         startPaused(timerLength);
+      } else {
+         start(timerLength);
+      }
+   }
+
+   public StopWatch(final long timerLength) {
+      this(false, timerLength);
    }
    
    /**
@@ -151,32 +137,6 @@ public class StopWatch {
    protected void checkPaused() {
       if (isPaused()) {
          throw new IllegalStateException("StopWatch is paused.");
-      }
-   }
-   
-   /**
-    * Checks if this {@code StopWatch} is started. If so, throws an
-    * {@link IllegalStateException}.
-    *
-    * @see #isStopped()
-    * @since 1.0
-    */
-   protected void checkStarted() {
-      if (!isStopped()) {
-         throw new IllegalStateException("StopWatch is already started.");
-      }
-   }
-   
-   /**
-    * Checks if this {@code StopWatch} is stopped. If so, throws an
-    * {@link IllegalStateException}.
-    *
-    * @see #isStopped()
-    * @since 1.0
-    */
-   protected void checkStopped() {
-      if (isStopped()) {
-         throw new IllegalStateException("StopWatch is not started.");
       }
    }
    
@@ -217,17 +177,6 @@ public class StopWatch {
    }
    
    /**
-    * Getter for {@link #stopped}.
-    *
-    * @return stopped
-    * @see #stopped
-    * @since 1.0
-    */
-   public boolean isStopped() {
-      return stopped;
-   }
-   
-   /**
     * Pauses this {@code StopWatch}. Useful for executing code outside the scope of
     * what is intended to be monitored.
     *
@@ -240,77 +189,6 @@ public class StopWatch {
       paused = true;
    }
    
-   /**
-    * Resets this {@code StopWatch} to an effectively default state. Will need to
-    * be restarted with {@link #start start}, {@link #restart restart} or
-    * {@link #restartPaused restartPaused}.
-    *
-    * @return this {@code StopWatch}, for method chaining
-    * @since 1.0
-    */
-   public synchronized StopWatch reset() {
-      stopped = true;
-      paused = false;
-      return this;
-   }
-   
-   /**
-    * Restarts this {@code StopWatch} with a timer length of 0.
-    *
-    * @return this {@code StopWatch}, for method chaining
-    * @since 1.0
-    */
-   public StopWatch restart() {
-      return restart(0);
-   }
-   
-   /**
-    * Restarts this {@code StopWatch} with the specified timer length, ignoring
-    * whether or not this {@code StopWatch} was started already.
-    *
-    * @param timerLength the new timer length to start with
-    * @return this {@code StopWatch}, for method chaining
-    * @since 1.0
-    */
-   public synchronized StopWatch restart(final long timerLength) {
-      reset().start(timerLength);
-      return this;
-   }
-   
-   /**
-    * Restarts this {@code StopWatch} in a paused state with a timer length of 0.
-    * <p>
-    * Starting paused is useful for calling {@link #runForDuration(Runnable)},
-    * since it will allow the code executing to chose when to start and stop this
-    * {@code StopWatch} without having to immediately pause it itself to achieve
-    * the same behavior.
-    *
-    * @return this {@code StopWatch}, for method chaining
-    * @since 1.0
-    */
-   public StopWatch restartPaused() {
-      return restartPaused(0);
-   }
-
-   /**
-    * Restarts this {@code StopWatch} in a paused state with the specified timer
-    * length.
-    * <p>
-    * Starting paused is useful for calling {@link #runForDuration(Runnable)},
-    * since it will allow the code executing to chose when to start and stop this
-    * {@code StopWatch} without having to immediately pause it itself to achieve
-    * the same behavior.
-    *
-    * @param timerLength the new timer length to start with
-    * @return this {@code StopWatch}, for method chaining
-    * @since 1.0
-    */
-   public synchronized StopWatch restartPaused(final long timerLength) {
-      reset().pause();
-      start(timerLength);
-      return this;
-   }
-
    /**
     * Will continuously execute the {@link Runnable} specified until this
     * {@code StopWatch}es timer is expired.
@@ -329,17 +207,36 @@ public class StopWatch {
     * @return this {@code StopWatch}, for method chaining
     * @since 1.0
     */
-   public synchronized StopWatch runForDuration(final Runnable code) {
+   public synchronized StopWatch runUntilExpired(final Runnable code) {
       while (!expired()) {
          code.run();
       }
       return this;
    }
 
+   public synchronized Thread runUntilExpiredThreaded(final Runnable code) {
+      final Thread thread = new Thread(() -> {
+         while (!expired()) {
+            code.run();
+         }
+      });
+      thread.start();
+      return thread;
+   }
+   
+   protected void setAlarm() {
+      if (expired()) {
+         return; //Expired, no point in creating a decently expensive thread.
+      }
+      alarm = new Thread(alarmRunnable);
+      alarm.setName("StopWatch@" + hashCode() + ".alarm#" + (StopWatch.alarmCounter++));
+      alarm.start();
+   }
+
    /**
-    * Sets the timer length of this {@code StopWatch} and notifies the alarm to
-    * start ticking.
-    * 
+    * Sets the timer length in milliseconds of this {@code StopWatch} and notifies
+    * the alarm to start ticking.
+    *
     * @param timerLength new timer length
     * @return this {@code StopWatch}, for method chaining
     * @since 1.0
@@ -348,24 +245,25 @@ public class StopWatch {
       if (timerLength < 0) {
          throw new IllegalArgumentException("StopWatch timer length cannot be less than 0.");
       }
-      this.timerLength = timerLength;
-      synchronized (alarm) {
-         alarm.notifyAll();
+      if ((alarm != null) && alarm.isAlive()) {
+         alarm.interrupt();
       }
+      this.timerLength = timerLength;
+      setAlarm();
       return this;
    }
-
+   
    /**
     * Starts this {@code StopWatch}. Effectively calls {@link #start(long)
     * start(0)}.
-    * 
+    *
     * @return this {@code StopWatch}, for method chaining
     * @since 1.0
     */
    public StopWatch start() {
       return start(0);
    }
-   
+
    /**
     * Starts this {@code StopWatch} with the specified timer length.
     * <p>
@@ -377,31 +275,21 @@ public class StopWatch {
     * @since 1.0
     */
    public synchronized StopWatch start(final long timerLength) {
-      checkStarted();
-      stopped = false;
       setTimer(timerLength);
       startTime = System.nanoTime();
       return this;
    }
+
+   public synchronized StopWatch startPaused() {
+      return startPaused(0);
+   }
    
-   /**
-    * Stops this {@code StopWatch}, and returns the time elapsed.
-    * <p>
-    * Will unpause if paused, and will throw an {@code IllegalStateException} if
-    * this {@code StopWatch} is not started.
-    *
-    * @return the time elapsed from start
-    * @see #timeElapsed()
-    * @see #timeElapsed(TimeUnit)
-    * @since 1.0
-    */
-   public synchronized long stop() {
-      checkStopped();
-      if (paused) {
-         unpause();
+   public synchronized StopWatch startPaused(final long timerLength) {
+      if (isPaused()) {
+         unpause(); //Unpause if already paused, as to not violate contract.
       }
-      stopped = false;
-      return timeElapsed();
+      pause();
+      return start(timerLength);
    }
    
    /**
@@ -413,7 +301,7 @@ public class StopWatch {
    public long timeElapsed() {
       return timeElapsed(MILLISECONDS);
    }
-
+   
    /**
     * Returns the time since the start, after converting it from nanoseconds to the
     * specified {@link TimeUnit}.
@@ -422,7 +310,6 @@ public class StopWatch {
     * @return time since the start, in the specified {@code TimeUnit}
     */
    public synchronized long timeElapsed(final TimeUnit unit) {
-      checkStopped();
       return unit.convert(System.nanoTime() - (paused ? startTime + (System.nanoTime() - pauseTime) : startTime), NANOSECONDS);
    }
    
@@ -433,6 +320,10 @@ public class StopWatch {
    public synchronized long timeLeft() {
       return timerLength - timeElapsed();
    }
+
+   protected long timeLeft(final TimeUnit timeUnit) {
+      return timeUnit.convert(timeLeft(), NANOSECONDS);
+   }
    
    /**
     *
@@ -441,5 +332,13 @@ public class StopWatch {
       checkUnpaused();
       paused = false;
       startTime += System.nanoTime() - pauseTime;
+   }
+   
+   public synchronized StopWatch waitUntilExpired() throws InterruptedException {
+      if (expired() || (alarm == null) || !alarm.isAlive()) {
+         throw new IllegalStateException("The timer is already expired.");
+      }
+      alarm.wait();
+      return this;
    }
 }
