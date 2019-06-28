@@ -2,15 +2,6 @@ package com.clownvin.math;
 
 public class MathUtil {
 	
-	public static int ard(float f) {
-		if (f % 1.0f == 0.0f) {
-			return (int) f;
-		}
-		if (f < 0)
-			return ((int) f) - 1;
-		return (int) f;
-	}
-	
 	public static float distance(float x1, float y1, float x2, float y2) {
 		return (float) Math.sqrt(((x1 - x2) * (x1 - x2)) + ((y1 - y2) * (y1 - y2)));
 	}
