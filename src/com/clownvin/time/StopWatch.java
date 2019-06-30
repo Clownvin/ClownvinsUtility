@@ -7,9 +7,7 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * A {@code StopWatch} implementation that supports pausing. Useful for
- * monitoring the run time of certain blocks of code. Also supplies a global
- * {@code StopWatch} instance, for use in code that does not require multiple
- * {@code StopWatche}s.
+ * monitoring the run time of certain blocks of code.
  * <p>
  * To use a {@code StopWatch}, you first need to call {@link #start},
  * {@link #restart} or {@link #restartPaused}, which will start the
@@ -23,16 +21,6 @@ import java.util.concurrent.TimeUnit;
  *
  */
 public class StopWatch {
-   
-   /**
-    * Globally instanced {@code StopWatch}, meant to be statically imported in
-    * certain use-cases.
-    *
-    * @since 1.0
-    */
-   public static final StopWatch GLOBAL_STOPWATCH = new StopWatch();
-   
-   protected static volatile long alarmCounter = 0;
 
    /**
     * The value of {@code System.nanoTime()} from when {@link #start} was last
@@ -77,35 +65,6 @@ public class StopWatch {
     * @since 1.0
     */
    protected volatile boolean paused = false;
-
-   /**
-    * Exists to call {@link #notifyAll()} on this {@code StopWatch} whenever this
-    * {@code StopWatch} becomes expired.
-    *
-    * @see #expired()
-    * @see #notifyAll()
-    * @since 1.0
-    */
-   protected Thread alarm;
-
-   /**
-    * The actual logic block for {@link #alarm}. Loops until expired
-    *
-    * @see #alarm
-    * @since 1.0
-    */
-   protected final Runnable alarmRunnable = () -> {
-      while (!expired()) {
-         try {
-            Thread.sleep(timeLeft(MILLISECONDS));
-         } catch (final InterruptedException e1) {
-            break;
-         }
-      }
-      synchronized (StopWatch.this) {
-         StopWatch.this.notifyAll();
-      }
-   };
 
    public StopWatch() {
       this(false, 0);
@@ -184,8 +143,8 @@ public class StopWatch {
     * @since 1.0
     */
    public synchronized void pause() {
-      pauseTime = System.nanoTime();
       checkPaused();
+      pauseTime = System.nanoTime();
       paused = true;
    }
    
@@ -223,15 +182,6 @@ public class StopWatch {
       thread.start();
       return thread;
    }
-   
-   protected void setAlarm() {
-      if (expired()) {
-         return; //Expired, no point in creating a decently expensive thread.
-      }
-      alarm = new Thread(alarmRunnable);
-      alarm.setName("StopWatch@" + hashCode() + ".alarm#" + (StopWatch.alarmCounter++));
-      alarm.start();
-   }
 
    /**
     * Sets the timer length in milliseconds of this {@code StopWatch} and notifies
@@ -245,11 +195,7 @@ public class StopWatch {
       if (timerLength < 0) {
          throw new IllegalArgumentException("StopWatch timer length cannot be less than 0.");
       }
-      if ((alarm != null) && alarm.isAlive()) {
-         alarm.interrupt();
-      }
-      this.timerLength = timerLength;
-      setAlarm();
+      this.timerLength = NANOSECONDS.convert(timerLength, MILLISECONDS);
       return this;
    }
    
@@ -310,9 +256,12 @@ public class StopWatch {
     * @return time since the start, in the specified {@code TimeUnit}
     */
    public synchronized long timeElapsed(final TimeUnit unit) {
-      return unit.convert(System.nanoTime() - (paused ? startTime + (System.nanoTime() - pauseTime) : startTime), NANOSECONDS);
+      if (paused) {
+         return unit.convert(System.nanoTime() - (startTime + (System.nanoTime() - pauseTime)), NANOSECONDS);
+      }
+      return unit.convert(System.nanoTime() - startTime, NANOSECONDS);
    }
-   
+
    /**
     *
     * @return
@@ -332,13 +281,5 @@ public class StopWatch {
       checkUnpaused();
       paused = false;
       startTime += System.nanoTime() - pauseTime;
-   }
-   
-   public synchronized StopWatch waitUntilExpired() throws InterruptedException {
-      if (expired() || (alarm == null) || !alarm.isAlive()) {
-         throw new IllegalStateException("The timer is already expired.");
-      }
-      alarm.wait();
-      return this;
    }
 }
