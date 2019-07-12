@@ -147,41 +147,6 @@ public class StopWatch {
       pauseTime = System.nanoTime();
       paused = true;
    }
-   
-   /**
-    * Will continuously execute the {@link Runnable} specified until this
-    * {@code StopWatch}es timer is expired.
-    * <p>
-    * This is useful for executing code in succession, but only for a while. When
-    * used in conjunction with pausing, you can also guarantee specific that code
-    * executes for approximately the length of the timer
-    * <p>
-    * If you need very precise control over what segments of code affect this
-    * {@code StopWatch}, you can call this method while in a paused state. Doing
-    * this means that you will need to manually unpause this {@code StopWatch}
-    * inside the specified {@code Runnable}.
-    *
-    * @param code the code to be executed for the remaining duration of this
-    *             {@code StopWatch}.
-    * @return this {@code StopWatch}, for method chaining
-    * @since 1.0
-    */
-   public synchronized StopWatch runUntilExpired(final Runnable code) {
-      while (!expired()) {
-         code.run();
-      }
-      return this;
-   }
-
-   public synchronized Thread runUntilExpiredThreaded(final Runnable code) {
-      final Thread thread = new Thread(() -> {
-         while (!expired()) {
-            code.run();
-         }
-      });
-      thread.start();
-      return thread;
-   }
 
    /**
     * Sets the timer length in milliseconds of this {@code StopWatch} and notifies
