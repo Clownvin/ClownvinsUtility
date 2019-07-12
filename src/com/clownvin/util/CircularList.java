@@ -836,11 +836,11 @@ public class CircularList<T> implements Deque<T>, List<T> {
 
    @Override
    public Object[] toArray() {
-      final Object[] object = new Object[size];
+      final Object[] array = new Object[size];
       for (int i = 0; i < size; i++) {
-         object[i] = array[translate(i)];
+         array[i] = get(i);
       }
-      return object;
+      return array;
    }
 
    @Override
@@ -848,9 +848,8 @@ public class CircularList<T> implements Deque<T>, List<T> {
          "hiding", "unchecked" // Safe to assume that array will ONLY contain types implementing T
    })
    public <T> T[] toArray(final T[] array) {
-      for (int i = 0; i < size; i++) {
-         i %= this.array.length;
-         array[i] = (T) this.array[translate(i)];
+      for (int i = 0; i < array.length; i++) {
+         array[i] = (T) get(i);
       }
       return array;
    }
