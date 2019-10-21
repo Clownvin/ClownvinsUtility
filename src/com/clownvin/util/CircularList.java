@@ -283,6 +283,34 @@ public class CircularList<T> implements List<T> {
     }
     return -1;
   }
+  
+  @Override
+  public boolean equals(Object other) {
+    if (!(other instanceof CircularList)) {
+      return false;
+    }
+    CircularList<?> otherList = (CircularList<?>) other;
+    for (int i = 0; i < size; i++) {
+      if (!get(i).equals(otherList.get(i))) {
+        return false;
+      }
+    }
+    return true;
+  }
+  
+  @Override
+  public String toString() {
+    StringBuilder builder = new StringBuilder();
+    builder.append('[');
+    for (int i = 0; i < size; i++) {
+      builder.append(get(i).toString());
+      if (i < size - 1) {
+        builder.append(", ");
+      }
+    }
+    builder.append(']');
+    return builder.toString();
+  }
 
   @Override
   public ListIterator<T> listIterator() {
@@ -369,8 +397,9 @@ public class CircularList<T> implements List<T> {
 
   @Override
   public List<T> subList(int arg0, int arg1) {
-    // TODO Auto-generated method stub
-    return null;
+    CircularList<T> subList = new CircularList<>(array.length);
+    subList.addAll(this);
+    return subList;
   }
 
   @SuppressWarnings("unchecked")
