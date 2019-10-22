@@ -1,85 +1,14 @@
 package com.clownvin.util;
 
+import java.util.AbstractList;
 import java.util.Collection;
-import java.util.Iterator;
 import java.util.List;
-import java.util.ListIterator;
 
 /**
  *
  * @param <T>
  */
-public class CircularList<T> implements List<T> {
-  
-  protected class CircularIterator implements Iterator<T> {
-    int index;
-    
-    protected CircularIterator() {
-      this(0);
-    }
-    
-    protected CircularIterator(int start) {
-      index = start;
-    }
-
-    @Override
-    public boolean hasNext() {
-      return index < size;
-    }
-
-    @Override
-    public T next() {
-      return get(index++);
-    }
-    
-  };
-  
-  protected class CircularListIterator extends CircularIterator implements ListIterator<T> {
-    
-    protected CircularListIterator() {
-      this(0);
-    }
-    
-    protected CircularListIterator(int start) {
-      super(start);
-    }
-
-    @Override
-    public void add(T val) {
-      CircularList.this.add(index++, val);
-    }
-
-    @Override
-    public boolean hasPrevious() {
-      return index > 0;
-    }
-
-    @Override
-    public int nextIndex() {
-      return index;
-    }
-
-    @Override
-    public T previous() {
-      return get(--index);
-    }
-
-    @Override
-    public int previousIndex() {
-      return index - 1;
-    }
-
-    @Override
-    public void remove() {
-      CircularList.this.remove(index);
-    }
-
-    @Override
-    public void set(T val) {
-      CircularList.this.set(index, val);
-    }
-    
-  }
+public class CircularList<T> extends AbstractList<T> implements List<T> {
 
   /**
    *
@@ -164,6 +93,44 @@ public class CircularList<T> implements List<T> {
     tail = size;
     this.array = array;
   }
+  
+  private void shiftHeadLeft(int index) {
+    System.arraycopy(array, head, array, head - 1, index - head);
+    head = cornerLeft(head - 1);
+  }
+  
+  private void shiftHeadRight(int index) {
+    System.arraycopy(array, head, array, head + 1, index - head);
+    head = cornerRight(head + 1);
+  }
+  
+  private void shiftTailLeft(int index) {
+    System.arraycopy(array, index + 1, array, index, tail - index);
+    tail = cornerLeft(tail - 1);
+  }
+  
+  private void shiftTailRight(int index) {
+    System.arraycopy(array, index, array, index + 1, tail - index);
+    tail = cornerRight(tail + 1);
+  }
+  
+  protected int cornerLeft(int index) {
+    return (index + array.length) % array.length;
+  }
+  
+  protected int cornerRight(int index) {
+    return index % array.length;
+  }
+  
+  protected int translate(int index) {
+    return (index + head) % array.length;
+  }
+  
+  protected int convert(int index) {
+    index = normalizeIndex(index);
+    rangeCheck(index);
+    return translate(index);
+  }
 
   @Override
   public boolean add(T val) {
@@ -179,25 +146,38 @@ public class CircularList<T> implements List<T> {
     ensureCapacity(size);
     if (index >= size) {
       add(val);
-      return;
     } else if (index == 0) {
-      head = --head < 0 ? array.length - 1 : head;
-      array[head] = val;
+      addHead(val);
     } else {
-      index = normalizeIndex(index);
-      rangeCheck(index);
-      index = (index + head) % array.length;
-      if (index < tail) {
-        System.arraycopy(array, index, array, index + 1, tail - index);
-        tail = ++tail % array.length;
-        array[index] = val;
-      } else {
-        System.arraycopy(array, head, array, head - 1, index - head);
-        head = --head < 0 ? array.length - 1 : head;
-        array[index - 1] = val;
-      }
+      addMiddle(index, val);
     }
+  }
+  
+  private void addHead(T val) {
+    head = cornerLeft(head - 1);
+    array[head] = val;
     size++;
+  }
+  
+  private void addMiddleTail(int index, T val) {
+    shiftTailRight(index);
+    array[index] = val;
+    size++;
+  }
+  
+  private void addMiddleHead(int index, T val) {
+    shiftHeadLeft(index);
+    array[index - 1] = val;
+    size++;
+  }
+  
+  public void addMiddle(int index, T val) {
+    index = convert(index);
+    if (index < tail) {
+      addMiddleTail(index, val);
+    } else {
+      addMiddleHead(index, val);
+    }
   }
 
   @Override
@@ -205,7 +185,7 @@ public class CircularList<T> implements List<T> {
     ensureCapacity(size + collection.size() - 1);
     for (T val : collection) {
       array[tail++] = val;
-      tail %= array.length;
+      tail = cornerRight(tail);
     }
     size += collection.size();
     return true;
@@ -251,7 +231,7 @@ public class CircularList<T> implements List<T> {
 
   @Override
   public T get(int index) {
-    return array[(head + index) % array.length];
+    return array[translate(normalizeIndex(index))];
   }
 
   @Override
@@ -267,11 +247,6 @@ public class CircularList<T> implements List<T> {
   @Override
   public boolean isEmpty() {
     return size == 0;
-  }
-
-  @Override
-  public Iterator<T> iterator() {
-    return new CircularIterator();
   }
 
   @Override
@@ -313,16 +288,6 @@ public class CircularList<T> implements List<T> {
   }
 
   @Override
-  public ListIterator<T> listIterator() {
-    return new CircularListIterator();
-  }
-
-  @Override
-  public ListIterator<T> listIterator(int start) {
-    return new CircularListIterator(start);
-  }
-
-  @Override
   public boolean remove(Object val) {
     int index = indexOf(val);
     if (index == -1) {
@@ -334,28 +299,41 @@ public class CircularList<T> implements List<T> {
 
   @Override
   public T remove(int index) {
-    T toReturn = null;
     if (index == 0) {
-      toReturn = array[head++];
-      head %= array.length;
+      return removeHead();
     } else if (index == size - 1) {
-      tail = --tail < 0 ? array.length - 1 : tail;
-      toReturn = array[tail];
-    } else {
-      index = normalizeIndex(index);
-      rangeCheck(index);
-      index = (head + index) % array.length;
-      toReturn = array[index];
-      if (index < tail) {
-        System.arraycopy(array, index + 1, array, index, tail - index);
-        tail = --tail < 0 ? array.length - 1 : tail;
-      } else {
-        System.arraycopy(array, head, array, head + 1, index - head);
-        head = ++head % array.length;
-      }
+      return removeTail();
     }
+    return removeMiddle(index);
+  }
+  
+  private T removeHead() {
+    T toReturn = array[head++];
+    head = cornerRight(head);
     size--;
     return toReturn;
+  }
+  
+  private T removeTail() {
+    tail = cornerLeft(tail - 1);
+    size--;
+    return array[tail];
+  }
+  
+  private T removeMiddle(int index) {
+    index = convert(index);
+    T toReturn = array[index];
+    shiftArray(index);
+    size--;
+    return toReturn;
+  }
+  
+  private void shiftArray(int index) {
+    if (index < tail) {
+      shiftTailLeft(index);
+    } else {
+      shiftHeadRight(index);
+    }
   }
 
   @Override
@@ -382,9 +360,7 @@ public class CircularList<T> implements List<T> {
 
   @Override
   public T set(int index, T val) {
-    index = normalizeIndex(index);
-    rangeCheck(index);
-    index = (head + index) % array.length;
+    index = convert(index);
     T toReturn = array[index];
     array[index] = val;
     return toReturn;

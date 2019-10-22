@@ -232,7 +232,7 @@ public class StopWatch {
     * @return
     */
    public synchronized long timeLeft() {
-      return timerLength - timeElapsed();
+      return timerLength - timeElapsed(NANOSECONDS);
    }
 
    protected long timeLeft(final TimeUnit timeUnit) {
